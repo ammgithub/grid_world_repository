@@ -47,7 +47,26 @@ class GridWorld(object):
         self.gamma = 1.0
         self.MAX_DELTA = 0.001
         
+        self.value_old = np.zeros((num_rows, num_cols))
+        self.value_new = np.zeros((num_rows, num_cols))
         
+    def iterative_policy_evaluation(self):
+        """
+        This method does most of the work. Save old values, then compute new 
+        values (per state) and calculate difference (current_delta) between 
+        old and new values.  
+        
+        Parameters
+        ----------
+        In    : 
+        Out   : 
+        
+        Examples
+        --------
+        grid_world = GridWorld(policy, num_rows, num_cols, current_delta)
+        grid_world = GridWorld(0.25, 4, 4, 1000000)
+        
+        """
         
         
 
