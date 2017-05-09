@@ -23,41 +23,47 @@ class GridWorld_TwoArrays(object):
     Grid world using two arrays
     
     """
-    def __init__(self, policy, num_rows, num_cols, reward):
+    def __init__(self, policy, num_rows, num_cols, reward, verbatim=False):
         """
         Grid world parameters. 
         
         Parameters
         ----------
-        In    : policy (scalar <= 1) , num_rows, num_cols, reward)
-        Out   : 
+        In    : policy (tuple, sum=1) , num_rows, num_cols, reward, verbatim
         
         Examples
         --------
         grid_world = GridWorld_TwoArrays(policy, num_rows, num_cols, reward)
-        grid_world = GridWorld_TwoArrays(0.25, 4, 4, -1)
+        grid_world = GridWorld_TwoArrays(0.25, 0.25, 0.25, 0.25), 4, 4, -1, True)
         """
         # User control
+        self.name = "GridWorld_TwoArrays"
+        # tuple with policy probabilities (up, down, right, left), sum(policy) = 1
         self.policy = policy
         self.num_rows = num_rows
         self.num_cols = num_cols
         self.reward = reward
+        self.verbatim = verbatim
         
         # Internal parameters
-        self.MAXITER = 10
         self.gamma = 1.0
-        self.MAX_DELTA = 1e-2
+        self.MAXITER = 3
+        self.MAXDELTA = 1e-6
+        self.counter = 0
+        self.current_delta = self.MAXDELTA + 1
         
     def iterative_policy_evaluation(self):
         """
-        This method does most of the work. Save old values, then compute new 
-        values (per state) and calculate difference (current_delta) between 
-        old and new values.  
+        This method does most of the work. For all states compute the value 
+        function contribution for the possible moves up, down, right, left.  
+        
+        There are two possible stopping criteria.  Either number of iterations
+        (self.MAXITER) or the maximum change in the value function for a 
+        single state (self.MAXDELTA).  
         
         Parameters
         ----------
-        In    : 
-        Out   : 
+        Out   : self.value, self.counter, self.current_delta
         
         Examples
         --------
@@ -65,14 +71,15 @@ class GridWorld_TwoArrays(object):
         """
         self.value_old = np.zeros((self.num_rows, self.num_cols))
         self.value_new = np.zeros((self.num_rows, self.num_cols))
-        counter = 0
-        current_delta = self.MAX_DELTA + 1
+        counter = self.counter
+        current_delta = self.current_delta
         
-        print "self.value_new = \n", self.value_new
-        print "counter = ", counter
-        print "current_delta = ", current_delta, "\n"
+        if self.verbatim: 
+            print "self.value_new = \n", self.value_new
+            print "counter = ", counter
+            print "current_delta = ", current_delta, "\n"
         
-        while (current_delta > self.MAX_DELTA and 
+        while (current_delta > self.MAXDELTA and 
                counter < grid_world.MAXITER):
             current_delta = 0.0
             # visit all states
@@ -84,27 +91,30 @@ class GridWorld_TwoArrays(object):
                     
                     # v to keep track of progress
                     v = self.value_old[r, c]
-                    
                     # Compute value contribution for each action
-                    m_up = move_up(r, c, self.num_rows, self.num_cols, policy, \
-                                   reward, self.gamma, self.value_old)
-                    m_down = move_down(r, c, self.num_rows, self.num_cols, \
-                                              policy, reward, self.gamma, self.value_old)
-                    m_right = move_right(r, c, self.num_rows, self.num_cols, \
-                                               policy, reward, self.gamma, self.value_old)
-                    m_left = move_left(r, c, self.num_rows, self.num_cols, \
-                                              policy, reward, self.gamma, self.value_old)
+                    mup = move_up(r, c, self.num_rows, self.num_cols, 
+                                  self.policy[0], reward, self.gamma, self.value_old)
+                    mdown = move_down(r, c, self.num_rows, self.num_cols, 
+                                      self.policy[1], reward, self.gamma, self.value_old)
+                    mright = move_right(r, c, self.num_rows, self.num_cols, 
+                                        self.policy[2], reward, self.gamma, self.value_old)
+                    mleft = move_left(r, c, self.num_rows, self.num_cols, 
+                                      self.policy[3], reward, self.gamma, self.value_old)
                     
-                    self.value_new[r, c] = m_up + m_down + m_right + m_left
+                    self.value_new[r, c] = mup + mdown + mright + mleft
                     current_delta = max(current_delta, abs(v - self.value_new[r, c]))
             
             self.value_old = deepcopy(self.value_new)
             counter += 1
-            print "self.value_new = \n", self.value_new
-            print "counter = ", counter
-            print "current_delta = ", current_delta, "\n"
+            
+            if self.verbatim: 
+                print "self.value_new = \n", self.value_new
+                print "counter = ", counter
+                print "current_delta = ", current_delta, "\n"
         
         self.value = self.value_new
+        self.counter = counter
+        self.current_delta = current_delta
 
 def move_up(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     """
@@ -113,22 +123,22 @@ def move_up(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     Parameters
     ----------
     In    : r, c, num_rows, num_cols, policy, reward, gamma, value_old
-    Out   : m_up
+    Out   : mup
     
     Examples
     --------
-    m_up = move_up(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
+    mup = move_up(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
     """
     if r==0:
         # Top row 
-        m_up = policy * (reward + gamma*value_old[r,c])
+        mup = policy * (reward + gamma*value_old[r,c])
     elif (r==1 and c==0):
         # Just below the terminal state
-        m_up = policy * (reward + gamma*value_old[r-1,c])
+        mup = policy * (reward + gamma*value_old[r-1,c])
     else:
         # Default contribution up
-        m_up = policy * (reward + gamma*value_old[r-1,c])
-    return m_up
+        mup = policy * (reward + gamma*value_old[r-1,c])
+    return mup
 
 def move_down(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     """
@@ -137,22 +147,22 @@ def move_down(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     Parameters
     ----------
     In    : r, c, num_rows, num_cols, policy, reward, gamma, value_old
-    Out   : m_down
+    Out   : mdown
     
     Examples
     --------
-    m_down = move_down(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
+    mdown = move_down(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
     """
     if r==num_rows-1:
         # Bottom row 
-        m_down = policy * (reward + gamma*value_old[r,c])
+        mdown = policy * (reward + gamma*value_old[r,c])
     elif (r==num_rows-2 and c==num_cols-1):
         # Just above the terminal state
-        m_down = policy * (reward + gamma*value_old[r+1,c])
+        mdown = policy * (reward + gamma*value_old[r+1,c])
     else:
         # Default contribution down
-        m_down = policy * (reward + gamma*value_old[r+1,c])
-    return m_down
+        mdown = policy * (reward + gamma*value_old[r+1,c])
+    return mdown
     
 def move_right(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     """
@@ -161,22 +171,22 @@ def move_right(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     Parameters
     ----------
     In    : r, c, num_rows, num_cols, policy, reward, gamma, value_old
-    Out   : m_right
+    Out   : mright
     
     Examples
     --------
-    m_right = move_right(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
+    mright = move_right(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
     """
     if c==num_cols-1:
         # Right most column
-        m_right = policy * (reward + gamma*value_old[r,c])
+        mright = policy * (reward + gamma*value_old[r,c])
     elif (r==num_rows-1 and c==num_cols-2):
         # Just to the left of the terminal state
-        m_right = policy * (reward + gamma*value_old[r,c+1])
+        mright = policy * (reward + gamma*value_old[r,c+1])
     else:
         # Default contribution right
-        m_right = policy * (reward + gamma*value_old[r,c+1])
-    return m_right
+        mright = policy * (reward + gamma*value_old[r,c+1])
+    return mright
 
 def move_left(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     """
@@ -185,38 +195,44 @@ def move_left(r, c, num_rows, num_cols, policy, reward, gamma, value_old):
     Parameters
     ----------
     In    : r, c, num_rows, num_cols, policy, reward, gamma, value_old
-    Out   : m_left
+    Out   : mleft
     
     Examples
     --------
-    m_left = move_left(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
+    mleft = move_left(r, c, num_rows, num_cols, policy, reward, gamma, value_old)
     """
     if c==0:
         # Left most column
-        m_left = policy * (reward + gamma*value_old[r,c])
+        mleft = policy * (reward + gamma*value_old[r,c])
     elif (r==0 and c==1):
         # Just to the right of the terminal state
-        m_left = policy * (reward + gamma*value_old[r,c-1])
+        mleft = policy * (reward + gamma*value_old[r,c-1])
     else:
         # Default contribution left
-        m_left = policy * (reward + gamma*value_old[r,c-1])
-    return m_left
+        mleft = policy * (reward + gamma*value_old[r,c-1])
+    return mleft
     
 if __name__ == '__main__':
     """
     execfile('C:\\Users\\amalysch\\git\\grid_world_repository\\grid_world_project\\src\\grid_world_module.py')
     """
-    policy = 0.25
+    policy = (0.25, 0.25, 0.25, 0.25)
+#     policy = (0.7, 0.1, 0.1, 0.1)
+#     policy = (1.0, 0.0, 0.0, 0.0)
     num_rows = 4
     num_cols = 4
     reward = -1
     grid_world = GridWorld_TwoArrays(policy, num_rows, num_cols, reward)
-    print "grid_world.policy = ", grid_world.policy
+    print "\nRunning Grid World with two arrays..."
     print "grid_world.num_rows = ", grid_world.num_rows
     print "grid_world.num_cols = ", grid_world.num_cols
     print "grid_world.reward = ", grid_world.reward
+    print "grid_world.MAXDELTA = ", grid_world.MAXDELTA
+    print "grid_world.MAXITER = ", grid_world.MAXITER
     grid_world.iterative_policy_evaluation()
-    print "grid_world.value = \n", grid_world.value
+    print "\ngrid_world.value = \n", grid_world.value
+    print "grid_world.counter = ", grid_world.counter
+    print "grid_world.current_delta = ", grid_world.current_delta
 
     
     
