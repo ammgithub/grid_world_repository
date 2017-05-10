@@ -47,7 +47,7 @@ class GridWorld_TwoArrays(object):
         
         # Internal parameters
         self.gamma = 1.0
-        self.MAXITER = 3
+        self.MAXITER = 10
         self.MAXDELTA = 1e-6
         self.counter = 0
         self.current_delta = self.MAXDELTA + 1
@@ -227,6 +227,7 @@ if __name__ == '__main__':
     print "grid_world.num_rows = ", grid_world.num_rows
     print "grid_world.num_cols = ", grid_world.num_cols
     print "grid_world.reward = ", grid_world.reward
+    print "grid_world.gamma = ", grid_world.gamma
     print "grid_world.MAXDELTA = ", grid_world.MAXDELTA
     print "grid_world.MAXITER = ", grid_world.MAXITER
     grid_world.iterative_policy_evaluation()
