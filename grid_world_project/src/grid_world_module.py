@@ -234,20 +234,15 @@ class GridWorld(object):
     |  8  |  9  |  10 | 11 | 
     ------------------------
     
-    Include two additional 'states':
-    12. Exit with reward +1
-    13. Exit with reward -1
-    
     Parameters
     ----------
     In    : policy (tuple, sum=1) , num_rows, num_cols, reward, verbatim
     
     Examples
     --------
-    gw = GridWorld(policy, num_rows, num_cols, reward)
-    gw = GridWorld(0.25, 0.25, 0.25, 0.25), 4, 4, -1, True)
+    gw = GridWorld(num_states, rew_idx, num_iter, P)
     """
-    def __init__(self, num_states, reward, num_iter, P):
+    def __init__(self, num_states, reward, num_iter, P, verbose=False):
         self.num_states = num_states
         # transition probabilities (3D matrix, states x states x actions)
         self.P = P
@@ -260,9 +255,9 @@ class GridWorld(object):
         self.values[3, 0] = 1.0
         # Exit from cell 7
         self.values[6, 0] = -1.0
+        self.verbose = verbose
         
-        
-    def value_iteration(self, verbose=False):
+    def value_iteration(self):
         """Value iteration
         """
         for i in range(1, self.num_iter):
@@ -287,7 +282,7 @@ class GridWorld(object):
             Q = np.vstack([qup, qdown, qleft, qright])
             self.values[:, i] = np.max(Q, axis=0)
             self.policies[:, i] = np.argmax(Q, axis=0)+1.
-            if verbose: 
+            if self.verbose: 
                 print "Moving (1) up / (2) down / (3) left / (4) right"
                 print Q
 
@@ -396,11 +391,11 @@ if __name__ == '__main__':
         verbose=False
         reward = [-0.01, -0.03, -0.4, -2.]
         for rew_idx in reward: 
-            gw = GridWorld(num_states, rew_idx, num_iter, P)
-            gw.value_iteration(verbose)
-            print "\nOptimal values after %d iterations with reward R=%0.2f"%(num_iter, rew_idx)
+            gw = GridWorld(num_states, rew_idx, num_iter, P, verbose=False)
+            gw.value_iteration()
+            print "\nOptimal values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
             print gw.values[:, num_iter-1]
-            print "Optimal policies after %d iterations with reward R=%0.2f"%(num_iter, rew_idx)
+            print "Optimal policies after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
             print gw.policies[:, num_iter-1]
     else:
         print "Invalid selection. Program terminating. "
