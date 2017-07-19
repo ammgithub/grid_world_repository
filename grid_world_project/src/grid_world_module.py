@@ -49,7 +49,7 @@ class GridWorld(object):
 
     Examples
     --------
-    gw = GridWorld(num_states, rew_idx, gamma, P, verbose=False)
+    gw = GridWorld(num_states, reward, gamma, P, verbose=False)
     gw = GridWorld(11, -0.01, 1.0, P)    
     """
     def __init__(self, num_states, reward, gamma, P, verbose=False):
