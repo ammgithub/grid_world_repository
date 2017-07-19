@@ -13,7 +13,7 @@ import numpy as np
 import pylab as plt
 
 np.set_printoptions(linewidth = 100, edgeitems = 'all', suppress = True, 
-                 precision = 4)
+                 precision = 2)
 
 class GridWorld(object):
     """
@@ -43,46 +43,25 @@ class GridWorld(object):
     
     Parameters
     ----------
-    In    : num_states, reward (per state), gamma, num_iter, P (transition probability matrix)
+    In    : num_states, reward (per state), gamma, P (transition probability matrix)
     Out   : gw.values, gw.policies (list of values and policies per state)
 
     Examples
     --------
-    gw = GridWorld(num_states, rew_idx, gamma, num_iter, P, verbose=False)
+    gw = GridWorld(num_states, rew_idx, gamma, P, verbose=False)
     gw = GridWorld(11, -0.01, 1.0, 50, P)    
     """
-    def __init__(self, num_states, reward, gamma, num_iter, num_pol_improv, P, verbose=False):
+    def __init__(self, num_states, reward, gamma, P, verbose=False):
         self.verbose = verbose
         self.num_states = num_states
-        # transition probabilities (3D matrix, states x states x actions)
-        self.P = P
-        self.num_actions = self.P.shape[2]
-        # per stages reward
         self.reward = reward * np.ones(num_states)
         self.gamma = gamma
         
-        # Value iteration
-        self.num_iter = num_iter
-        self.policies = np.zeros((num_states, num_iter)) # both VI and PI
+        # transition probabilities (3D matrix, states x states x actions)
+        self.P = P
+        self.num_actions = self.P.shape[2]
 
-        self.Q = np.zeros((self.num_actions, num_states, num_iter))
-        self.values = np.zeros((num_states, num_iter))
-        # Exit from cell 4
-        self.values[3, 0] = 1.0
-        # Exit from cell 7
-        self.values[6, 0] = -1.0
-        
-        # Policy iteration
-        self.Qpol = np.zeros((self.num_actions, num_states, num_pol_improv))
-        self.vpi = np.zeros((num_states, num_pol_improv))
-        self.num_pol_improv = num_pol_improv
-
-        if self.values.shape[0] != self.P.shape[0]: 
-            raise ValueError("Please check values vector and transition probability matrix.")
-        if self.policies.shape[0] != self.P.shape[0]: 
-            raise ValueError("Please check policies vector and transition probability matrix.")
-        
-    def value_iteration(self):
+    def value_iteration(self, num_iter):
         """Value iteration
         
         Vk+1 (s) = max ( sum Pss'(a)*( Rss'(a) + gamma * Vk (s') ) )
@@ -91,36 +70,44 @@ class GridWorld(object):
         Values are written into 2d array currently to observe progress. Can 
         be made into 1d in the future to save memory. 
         """
+        self.num_iter = num_iter
+        
+        self.Q = []
+        # Q for i = 0:
+        self.Q.append(np.zeros((self.num_actions, self.num_states)))
+        self.Q[0][:, 3] = 1.0; self.Q[0][:, 6] = -1.0
+
+        self.values = []
+        # Values for i = 0:
+        self.values.append(np.zeros(self.num_states))
+        self.values[0][3] = 1.0; self.values[0][6] = -1.0
+
+        self.policies = []
+        # Zero policy for i = 0:
+        self.policies.append(np.zeros(self.num_states, 'int'))
         for i in range(1, self.num_iter):
-            # moving up (1)
-            qup = np.inner(self.P[:, :, 0], \
-                           self.reward + self.gamma*self.values[:, i-1])
-            qup[3] = 1.0
-            qup[6] = -1.0
-            # moving down (2)
-            qdown = np.inner(self.P[:, :, 1], \
-                             self.reward + self.gamma*self.values[:, i-1])
-            qdown[3] = 1.0
-            qdown[6] = -1.0
-            # moving left (3)
-            qleft = np.inner(self.P[:, :, 2], \
-                             self.reward + self.gamma*self.values[:, i-1])
-            qleft[3] = 1.0
-            qleft[6] = -1.0
-            # moving right (4)
-            qright = np.inner(self.P[:, :, 3], \
-                              self.reward + self.gamma*self.values[:, i-1])
-            qright[3] = 1.0
-            qright[6] = -1.0
-            
-            # Q values 
+            qup = np.inner(self.P[:, :, 0], self.reward + self.gamma*self.values[i-1])
+            qdown = np.inner(self.P[:, :, 1], self.reward + self.gamma*self.values[i-1])
+            qleft = np.inner(self.P[:, :, 2], self.reward + self.gamma*self.values[i-1])
+            qright = np.inner(self.P[:, :, 3], self.reward + self.gamma*self.values[i-1])
+
+            # Q values: up (1) down (2) left (3) right (4)
             Q = np.vstack([qup, qdown, qleft, qright])
-            self.Q[:, :, i] = Q
-            self.values[:, i] = np.max(Q, axis=0)
-            self.policies[:, i] = np.argmax(Q, axis=0)+1.
+            Q[:, 3] = 1.0; Q[:, 6] = -1.0
+            self.Q.append(Q)
+            self.values.append(np.max(Q, axis=0))
+            self.policies.append(np.argmax(Q, axis=0)+1)
             if self.verbose: 
                 print "Moving (1) up / (2) down / (3) left / (4) right"
                 print Q
+        self.policies = np.array(self.policies).T
+        self.values = np.array(self.values).T
+        # 3d transpose (axis = (1, 2, 0))
+        self.Q = np.array(self.Q).transpose((1, 2, 0))
+        if self.policies.shape[0] != self.P.shape[0]: 
+            raise ValueError("Please check policies vector and transition probability matrix.")
+        if self.values.shape[0] != self.P.shape[0]: 
+            raise ValueError("Please check values vector and transition probability matrix.")
 
     def policy_iteration(self, num_pol_improv, pol_pi_init):
         """Policy iteration: choose initial policy a = pi_i(s)
@@ -151,19 +138,33 @@ class GridWorld(object):
         gw.P[4,:,2]
         ...
         """
-        pol_pi = pol_pi_init
+        self.num_pol_improv = num_pol_improv
+        
+        self.Qpol = []
+        # Qpol for i = 0:
+        self.Qpol.append(np.zeros((self.num_actions, self.num_states)))
+        self.Qpol[0][:, 3] = 1.0; self.Qpol[0][:, 6] = -1.0
+        
+        self.vpi = []
+        # Vpi for i = 0:
+        self.vpi.append(np.zeros(self.num_states))
+        self.vpi[0][3] = 1.0; self.vpi[0][6] = -1.0
+        
         self.policies = []
+        pol_pi = pol_pi_init
+        # Policy for i = 0:
         self.policies.append(pol_pi)
+
         self.avg_num_pol_eval = 0
         self.num_pol_improv = num_pol_improv
-#         for i in range(1, self.num_iter):
         for i in range(1, num_pol_improv):
             # Vpi for num_pol_eval = 0
             if self.verbose: print "i = ", i
-            this_vpi = np.zeros(num_states); this_vpi[3] = 1.0; this_vpi[6] = -1.0
-            
+            this_vpi = np.zeros(num_states)
+            this_vpi[3] = 1.0; this_vpi[6] = -1.0
             # Select the transition probabilities based on policy
             pol_probs = self.P[range(self.num_states), :, pol_pi-1]
+
             eps_stop = 1e-3; eps = 1.0; num_pol_eval = 0
             while (eps > eps_stop) and (num_pol_eval < 100):
                 num_pol_eval += 1
@@ -186,14 +187,22 @@ class GridWorld(object):
         
             Qpol = np.vstack([qup, qdown, qleft, qright])
             Qpol[:, 3] = 1.0; Qpol[:, 6] = -1.0
-            self.Qpol[:, :, i] = Qpol
+            self.Qpol.append(Qpol)
             vpi = np.max(Qpol, axis=0)
-            self.vpi[:, i] = vpi
+            self.vpi.append(vpi)
             if self.verbose: print "Qpol = \n", Qpol
             if self.verbose: print "vpi = \n", vpi
+            # Need pol_pi to compute pol_probs in next iteration
             pol_pi = np.argmax(Qpol, axis=0)+1
             self.policies.append(pol_pi)
         self.policies = np.array(self.policies).T
+        self.vpi = np.array(self.vpi).T
+        # 3d transpose (axis = (1, 2, 0))
+        self.Qpol = np.array(self.Qpol).transpose((1, 2, 0))
+        if self.policies.shape[0] != self.P.shape[0]: 
+            raise ValueError("Please check policies vector and transition probability matrix.")
+        if self.vpi.shape[0] != self.P.shape[0]: 
+            raise ValueError("Please check Vpi vector and transition probability matrix.")
 
 if __name__ == '__main__':
     """
@@ -204,45 +213,24 @@ if __name__ == '__main__':
     print 60 * '-'
     print 18 * ' ' + " Grid World Exercises "
     print 60 * '-'
-    print "(1) Grid World old."
-    print "(2) Grid World 4 x 3 from UC CS 188."
+    print "(1) Grid World 4 x 3 from UC CS 188."
     print 60 * '-'
 
-#     invalid_input = True
-#     while invalid_input:
-#         try:
-#             user_in = int(raw_input("Make selection (1)-(2): "))
-#             invalid_input = False
-#         except ValueError as e:
-#             print "%s is not a valid selection. Please try again. "\
-#             %e.args[0].split(':')[1]
-    user_in = 2
+    invalid_input = True
+    while invalid_input:
+        try:
+            user_in = int(raw_input("Make selection (1): "))
+            invalid_input = False
+        except ValueError as e:
+            print "%s is not a valid selection. Please try again. "\
+            %e.args[0].split(':')[1]
 
     if user_in == 1:
-        print "(1) Grid World by Sutton/ Barto..."
-        policy = (0.25, 0.25, 0.25, 0.25)
-    #     policy = (0.7, 0.1, 0.1, 0.1)
-    #     policy = (1.0, 0.0, 0.0, 0.0)
-        num_rows = 4
-        num_cols = 4
-        reward = -1
-        grid_world = GridWorld_Barto(policy, num_rows, num_cols, reward)
-        print "grid_world.num_rows = ", grid_world.num_rows
-        print "grid_world.num_cols = ", grid_world.num_cols
-        print "grid_world.reward = ", grid_world.reward
-        print "grid_world.gamma = ", grid_world.gamma
-        print "grid_world.MAXDELTA = ", grid_world.MAXDELTA
-        print "grid_world.MAXITER = ", grid_world.MAXITER
-        grid_world.iterative_policy_evaluation()
-        print "\ngrid_world.value = \n", grid_world.value
-        print "grid_world.counter = ", grid_world.counter
-        print "grid_world.current_delta = ", grid_world.current_delta
-    elif user_in == 2:
-        # UC CS 188 Experiment
-        print "(2) Grid World 4 x 3 from UC CS 188...\n"
+        print "(1) Grid World 4 x 3 from UC CS 188...\n"
         
         # Transition probability UP
-        pup = np.array([[ 0.9,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+        pup = \
+        np.array([[ 0.9,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0.1,  0.8,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0.1,  0.8,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0. ,  0. ,  1. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
@@ -255,7 +243,8 @@ if __name__ == '__main__':
        [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0.8,  0. ,  0. ,  0.1,  0.1]])
         
         # Transition probability DOWN
-        pdown = np.array([[ 0.1,  0.1,  0. ,  0. ,  0.8,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+        pdown = \
+        np.array([[ 0.1,  0.1,  0. ,  0. ,  0.8,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0.1,  0.8,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0.1,  0. ,  0.1,  0. ,  0.8,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0. ,  0. ,  1. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
@@ -281,7 +270,8 @@ if __name__ == '__main__':
        [ 0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0.1,  0. ,  0. ,  0.8,  0.1]])
 
         # Transition probability RIGHT
-        pright = np.array([[ 0.1,  0.8,  0. ,  0. ,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
+        pright = \
+        np.array([[ 0.1,  0.8,  0. ,  0. ,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0.2,  0.8,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0. ,  0.1,  0.8,  0. ,  0.1,  0. ,  0. ,  0. ,  0. ,  0. ],
        [ 0. ,  0. ,  0. ,  1. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ,  0. ],
@@ -300,21 +290,20 @@ if __name__ == '__main__':
 
         # Value iteration
         num_iter = 100
-        # TODO: not needed for value iteration, but must provide value
-        num_pol_improv = 20
         verbose=False
         reward = [-0.01, -0.03, -0.4, -2.]
         for rew_idx in reward: 
             print "\nValue iteration: reward = %0.2f, gamma = %0.2f"%(rew_idx, gamma)
             print "============================================="
-            gw = GridWorld(num_states, rew_idx, gamma, num_iter, num_pol_improv, P, verbose)
-            gw.value_iteration()
+            gw = GridWorld(num_states, rew_idx, gamma, P, verbose)
+            gw.value_iteration(num_iter)
             print "Optimal values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
             print gw.values[:, num_iter-1]
             print "Optimal policies after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
             print gw.policies[:, num_iter-1]
             print "Optimal Q values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
             print gw.Q[:, :, num_iter-1]
+            print gw.Q[:, :, num_iter-1].sum()
 
         ########################################################################
         #            
@@ -333,25 +322,25 @@ if __name__ == '__main__':
 
         # Policy iteration
         pol_pi_init = np.array([1, 2, 3, 4, 3, 2, 1, 2, 3, 4, 3])
-        # TODO: not needed for policy iteration, but must provide value
-        num_iter = 100
         num_pol_improv = 20
         verbose=False
         reward = [-0.01, -0.03, -0.4, -2.]
         for rew_idx in reward:
             print "\nPolicy iteration: reward = %0.2f, gamma = %0.2f"%(rew_idx, gamma)
             print "=============================================="
-            gw = GridWorld(num_states, rew_idx, gamma, num_iter, num_pol_improv, P, verbose)
+            gw = GridWorld(num_states, rew_idx, gamma, P, verbose)
             gw.policy_iteration(num_pol_improv, pol_pi_init)
             print "Optimal values with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
                 %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
             print gw.vpi[:, num_pol_improv-1]
             print "Optimal policies with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
                 %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
-            print gw.policies[:, -1]
+            print gw.policies[:, num_pol_improv-1]
             print "Optimal Qpol with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
                 %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
             print gw.Qpol[:, :, num_pol_improv-1]
+            print gw.Qpol[:, :, num_pol_improv-1].sum()
+
     else:
         print "Invalid selection. Program terminating. "
     print "Finished."
