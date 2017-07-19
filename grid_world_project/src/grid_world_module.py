@@ -43,13 +43,14 @@ class GridWorld(object):
     
     Parameters
     ----------
-    In    : num_states, reward (per state), gamma, P (transition probability matrix)
-    Out   : gw.values, gw.policies (list of values and policies per state)
+    In    : num_states, reward, gamma, P (transition probability matrix)
+    Out   : self.policies, self.values, self.Q (value iteration)
+            self.policies, self.vpi, self.Qpol (policy iteration)
 
     Examples
     --------
     gw = GridWorld(num_states, rew_idx, gamma, P, verbose=False)
-    gw = GridWorld(11, -0.01, 1.0, 50, P)    
+    gw = GridWorld(11, -0.01, 1.0, P)    
     """
     def __init__(self, num_states, reward, gamma, P, verbose=False):
         self.verbose = verbose
@@ -62,13 +63,15 @@ class GridWorld(object):
         self.num_actions = self.P.shape[2]
 
     def value_iteration(self, num_iter):
-        """Value iteration
+        """Value iteration:
         
         Vk+1 (s) = max ( sum Pss'(a)*( Rss'(a) + gamma * Vk (s') ) )
                     a     s'
         
-        Values are written into 2d array currently to observe progress. Can 
-        be made into 1d in the future to save memory. 
+        Parameters
+        ----------
+        In    : num_iter
+        Out   : self.policies, self.values, self.Q 
         """
         self.num_iter = num_iter
         
@@ -121,22 +124,23 @@ class GridWorld(object):
                              s'
         Parameters
         ----------
-        In    : pol_pi_init, array mapping states to actions
-        
-        Note  : pol_pi_init values      1.,2.,3.,4. (up, down, left, right)
-                map to indices     0.,1.,2.,3.
-                
+        In    : num_pol_improv, pol_pi_init
+        Out   : self.policies, self.vpi, self.Qpol 
+
         Example policy: 
         pol_pi_init = np.array([1, 2, 3, 4, 3, 2, 1, 2, 3, 4, 3])
         
-        pol_probs slices through the 3d matrix self.P. For the example policy
-        the first five rows of pol_probs are given by: 
-        gw.P[0,:,0]
-        gw.P[1,:,1]
-        gw.P[2,:,2]
-        gw.P[3,:,3]
-        gw.P[4,:,2]
-        ...
+        Note 1: pol_pi_init values      1.,2.,3.,4. (up, down, left, right)
+                map to indices          0.,1.,2.,3.
+                
+        Note 2: pol_probs slices through the 3d matrix self.P. For the example policy
+                the first five rows of pol_probs are given by: 
+                gw.P[0,:,0]
+                gw.P[1,:,1]
+                gw.P[2,:,2]
+                gw.P[3,:,3]
+                gw.P[4,:,2]
+                ...
         """
         self.num_pol_improv = num_pol_improv
         
@@ -303,7 +307,7 @@ if __name__ == '__main__':
             print gw.policies[:, num_iter-1]
             print "Optimal Q values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
             print gw.Q[:, :, num_iter-1]
-            print gw.Q[:, :, num_iter-1].sum()
+            print "Testing sum(Q): %4.2f"%gw.Q[:, :, num_iter-1].sum()
 
         ########################################################################
         #            
@@ -339,7 +343,7 @@ if __name__ == '__main__':
             print "Optimal Qpol with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
                 %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
             print gw.Qpol[:, :, num_pol_improv-1]
-            print gw.Qpol[:, :, num_pol_improv-1].sum()
+            print "Testing sum(Qpol): %4.2f"%gw.Qpol[:, :, num_pol_improv-1].sum()
 
     else:
         print "Invalid selection. Program terminating. "
