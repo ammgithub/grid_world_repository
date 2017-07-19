@@ -11,7 +11,6 @@ __version__ = 0.0
 
 import numpy as np
 import pylab as plt
-# from copy import deepcopy
 
 np.set_printoptions(linewidth = 100, edgeitems = 'all', suppress = True, 
                  precision = 4)
@@ -205,7 +204,7 @@ if __name__ == '__main__':
     print 60 * '-'
     print 18 * ' ' + " Grid World Exercises "
     print 60 * '-'
-    print "(1) Grid World by Sutton/ Barto."
+    print "(1) Grid World old."
     print "(2) Grid World 4 x 3 from UC CS 188."
     print 60 * '-'
 
