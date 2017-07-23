@@ -168,7 +168,7 @@ class GridWorld(object):
             this_vpi[3] = 1.0; this_vpi[6] = -1.0
             # Select the transition probabilities based on policy
             pol_probs = self.P[range(self.num_states), :, pol_pi-1]
-
+            
             eps_stop = 1e-3; eps = 1.0; num_pol_eval = 0
             while (eps > eps_stop) and (num_pol_eval < 100):
                 num_pol_eval += 1
