@@ -101,8 +101,8 @@ class GridWorld(object):
             self.values.append(np.max(Q, axis=0))
             self.policies.append(np.argmax(Q, axis=0)+1)
             if self.verbose: 
-                print "Moving (1) up / (2) down / (3) left / (4) right"
-                print Q
+                print( "Moving (1) up / (2) down / (3) left / (4) right")
+                print( Q)
         self.policies = np.array(self.policies).T
         self.values = np.array(self.values).T
         # 3d transpose (axis = (1, 2, 0))
@@ -163,7 +163,7 @@ class GridWorld(object):
         self.num_pol_improv = num_pol_improv
         for i in range(1, num_pol_improv):
             # Vpi for num_pol_eval = 0
-            if self.verbose: print "i = ", i
+            if self.verbose: print( "i = ", i)
             this_vpi = np.zeros(num_states)
             this_vpi[3] = 1.0; this_vpi[6] = -1.0
             # Select the transition probabilities based on policy
@@ -180,7 +180,7 @@ class GridWorld(object):
                 eps = np.sqrt(np.inner(delta_vpi_new, delta_vpi_new))
             
             if self.verbose: 
-                print "I needed %d iterations during policy evaluation."%num_pol_eval
+                print( "I needed %d iterations during policy evaluation."%num_pol_eval)
             self.avg_num_pol_eval = (self.avg_num_pol_eval*(i-1)+num_pol_eval)/float(i)
             
             # Update pi_i+1 with converged Vpi: up (1) down (2) left (3) right (4)
@@ -194,8 +194,8 @@ class GridWorld(object):
             self.Qpol.append(Qpol)
             vpi = np.max(Qpol, axis=0)
             self.vpi.append(vpi)
-            if self.verbose: print "Qpol = \n", Qpol
-            if self.verbose: print "vpi = \n", vpi
+            if self.verbose: print( "Qpol = \n", Qpol)
+            if self.verbose: print( "vpi = \n", vpi)
             # Need pol_pi to compute pol_probs in next iteration
             pol_pi = np.argmax(Qpol, axis=0)+1
             self.policies.append(pol_pi)
@@ -213,24 +213,24 @@ if __name__ == '__main__':
     execfile('C:\\Users\\amalysch\\git\\grid_world_repository\\grid_world_project\\src\\grid_world_module.py')
     """
     
-    print "\n"
-    print 60 * '-'
-    print 18 * ' ' + " Grid World Exercises "
-    print 60 * '-'
-    print "(1) Grid World 4 x 3 from UC CS 188."
-    print 60 * '-'
+    print( "\n")
+    print( 60 * '-')
+    print( 18 * ' ' + " Grid World Exercises ")
+    print( 60 * '-')
+    print( "(1) Grid World 4 x 3 from UC CS 188.")
+    print( 60 * '-')
 
     invalid_input = True
     while invalid_input:
         try:
-            user_in = int(raw_input("Make selection (1): "))
+            user_in = int(input("Make selection (1): "))
             invalid_input = False
         except ValueError as e:
-            print "%s is not a valid selection. Please try again. "\
-            %e.args[0].split(':')[1]
+            print( "%s is not a valid selection. Please try again. "\
+            %e.args[0].split(':')[1])
 
     if user_in == 1:
-        print "(1) Grid World 4 x 3 from UC CS 188...\n"
+        print( "(1) Grid World 4 x 3 from UC CS 188...\n")
         
         # Transition probability UP
         pup = \
@@ -297,17 +297,17 @@ if __name__ == '__main__':
         verbose=False
         reward = [-0.01, -0.03, -0.4, -2.]
         for rew_idx in reward: 
-            print "\nValue iteration: reward = %0.2f, gamma = %0.2f"%(rew_idx, gamma)
-            print "============================================="
+            print( "\nValue iteration: reward = %0.2f, gamma = %0.2f"%(rew_idx, gamma))
+            print( "=============================================")
             gw = GridWorld(num_states, rew_idx, gamma, P, verbose)
             gw.value_iteration(num_iter)
-            print "Optimal values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
-            print gw.values[:, num_iter-1]
-            print "Optimal policies after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
-            print gw.policies[:, num_iter-1]
-            print "Optimal Q values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx)
-            print gw.Q[:, :, num_iter-1]
-            print "Testing sum(Q): %4.2f"%gw.Q[:, :, num_iter-1].sum()
+            print( "Optimal values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx))
+            print( gw.values[:, num_iter-1])
+            print( "Optimal policies after %d iterations with reward R = %0.2f"%(num_iter, rew_idx))
+            print( gw.policies[:, num_iter-1])
+            print( "Optimal Q values after %d iterations with reward R = %0.2f"%(num_iter, rew_idx))
+            print( gw.Q[:, :, num_iter-1])
+            print( "Testing sum(Q): %4.2f"%gw.Q[:, :, num_iter-1].sum())
 
         ########################################################################
         #            
@@ -330,21 +330,21 @@ if __name__ == '__main__':
         verbose=False
         reward = [-0.01, -0.03, -0.4, -2.]
         for rew_idx in reward:
-            print "\nPolicy iteration: reward = %0.2f, gamma = %0.2f"%(rew_idx, gamma)
-            print "=============================================="
+            print( "\nPolicy iteration: reward = %0.2f, gamma = %0.2f"%(rew_idx, gamma))
+            print( "==============================================")
             gw = GridWorld(num_states, rew_idx, gamma, P, verbose)
             gw.policy_iteration(num_pol_improv, pol_pi_init)
-            print "Optimal values with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
-                %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
-            print gw.vpi[:, num_pol_improv-1]
-            print "Optimal policies with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
-                %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
-            print gw.policies[:, num_pol_improv-1]
-            print "Optimal Qpol with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
-                %(num_pol_improv, gw.avg_num_pol_eval, rew_idx)
-            print gw.Qpol[:, :, num_pol_improv-1]
-            print "Testing sum(Qpol): %4.2f"%gw.Qpol[:, :, num_pol_improv-1].sum()
+            print( "Optimal values with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
+                %(num_pol_improv, gw.avg_num_pol_eval, rew_idx))
+            print( gw.vpi[:, num_pol_improv-1])
+            print( "Optimal policies with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
+                %(num_pol_improv, gw.avg_num_pol_eval, rew_idx))
+            print( gw.policies[:, num_pol_improv-1])
+            print( "Optimal Qpol with %d policy improvements, %3.1f average policy evaluations, and reward R = %0.2f"\
+                %(num_pol_improv, gw.avg_num_pol_eval, rew_idx))
+            print( gw.Qpol[:, :, num_pol_improv-1])
+            print( "Testing sum(Qpol): %4.2f"%gw.Qpol[:, :, num_pol_improv-1].sum())
 
     else:
-        print "Invalid selection. Program terminating. "
-    print "Finished."
+        print( "Invalid selection. Program terminating. ")
+    print( "Finished.")
